@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #060608;
+  --foreground: #f4f4f5;
+  --card: rgba(24, 24, 27, 0.55);
+  --card-border: rgba(255, 255, 255, 0.06);
+  --accent-violet: #8b5cf6;
+  --accent-cyan: #22d3ee;
+  --muted: #71717a;
+}
+
+body {
+  color: var(--foreground);
+  background-color: var(--background);
+  min-height: 100vh;
+}
+
+@layer utilities {
+  .text-gradient-brand {
+    @apply bg-gradient-to-r from-violet-200 via-white to-cyan-200 bg-clip-text text-transparent;
+  }
+}
