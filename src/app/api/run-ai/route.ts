@@ -4,7 +4,7 @@ import { verdictFromState } from "@/types/dispute";
 import { NextResponse } from "next/server";
 
 export async function POST() {
-  const result = applyAiVerdictToStore(analyzeDisputeEvidence);
+  const result = await applyAiVerdictToStore(analyzeDisputeEvidence);
   if (!result.ok) {
     return NextResponse.json(
       { ok: false, error: result.error },

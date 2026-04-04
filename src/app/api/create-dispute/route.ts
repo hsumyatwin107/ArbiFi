@@ -2,7 +2,7 @@ import { createDispute } from "@/lib/dispute-store";
 import { NextResponse } from "next/server";
 
 export async function POST() {
-  const result = createDispute();
+  const result = await createDispute();
   if (!result.ok) {
     return NextResponse.json(
       { ok: false, error: result.error },

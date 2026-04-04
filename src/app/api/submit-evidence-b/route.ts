@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as { text?: string };
-    const result = submitEvidenceB(
+    const result = await submitEvidenceB(
       typeof body.text === "string" ? body.text : ""
     );
     if (!result.ok) {

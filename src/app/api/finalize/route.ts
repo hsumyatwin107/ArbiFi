@@ -65,7 +65,7 @@ export async function POST(req: Request) {
         ? body.chainSignature.trim()
         : undefined;
 
-    const snapshot = getDisputeState();
+    const snapshot = await getDisputeState();
     if (!snapshot.aiResult) {
       return NextResponse.json(
         { ok: false, error: "Generate an AI verdict first." },
@@ -102,7 +102,7 @@ export async function POST(req: Request) {
         " No on-chain receipt was supplied; see `solana.demoUnsignedTransferBase64` for an illustrative unsigned transfer layout.";
     }
 
-    const result = finalizeDispute({
+    const result = await finalizeDispute({
       chainSignature,
       fundsSimulationText,
     });

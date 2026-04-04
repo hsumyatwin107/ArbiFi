@@ -9,7 +9,7 @@ export type AiResultMeta = {
 
 export type AiResult = DisputeVerdict & AiResultMeta;
 
-/** Serializable snapshot from the in-memory store / API. */
+/** Serializable snapshot from persistence / API. */
 export type DisputeState = {
   disputeCreated: boolean;
   partyBJoined: boolean;

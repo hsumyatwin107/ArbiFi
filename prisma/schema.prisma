@@ -1,0 +1,20 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// Tek satır uygulama durumu (hackathon dispute akışı).
+model DisputeState {
+  id             String  @id
+  disputeCreated Boolean @default(false)
+  partyBJoined   Boolean @default(false)
+  evidenceA      String  @default("")
+  evidenceB      String  @default("")
+  /// DisputeVerdict + finalize meta (JSON)
+  aiResult       Json?
+  winner         String  @default("")
+}

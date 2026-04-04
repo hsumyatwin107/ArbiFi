@@ -1,7 +1,11 @@
 import type { DisputeVerdict } from "@/lib/disputeAi";
-import type { DisputeState } from "@/types/dispute";
+import { prisma } from "@/lib/prisma";
+import type { AiResult, DisputeState } from "@/types/dispute";
+import { isDisputeFinalized } from "@/types/dispute";
+import { Prisma } from "@prisma/client";
 
-/** In-memory hackathon store; resets on server restart. */
+const SINGLETON_ID = "default";
+
 function initial(): DisputeState {
   return {
     disputeCreated: false,
@@ -13,84 +17,147 @@ function initial(): DisputeState {
   };
 }
 
-let store: DisputeState = initial();
-
-function clone(): DisputeState {
+function clone(state: DisputeState): DisputeState {
   return {
-    ...store,
-    aiResult: store.aiResult ? { ...store.aiResult } : null,
+    ...state,
+    aiResult: state.aiResult ? { ...state.aiResult } : null,
   };
 }
 
-export function getDisputeState(): DisputeState {
-  return clone();
+function rowToState(row: {
+  disputeCreated: boolean;
+  partyBJoined: boolean;
+  evidenceA: string;
+  evidenceB: string;
+  aiResult: Prisma.JsonValue;
+  winner: string;
+}): DisputeState {
+  return {
+    disputeCreated: row.disputeCreated,
+    partyBJoined: row.partyBJoined,
+    evidenceA: row.evidenceA,
+    evidenceB: row.evidenceB,
+    aiResult:
+      row.aiResult === null || row.aiResult === undefined
+        ? null
+        : (row.aiResult as unknown as AiResult),
+    winner: row.winner,
+  };
+}
+
+async function ensureRow() {
+  return prisma.disputeState.upsert({
+    where: { id: SINGLETON_ID },
+    create: {
+      id: SINGLETON_ID,
+      disputeCreated: false,
+      partyBJoined: false,
+      evidenceA: "",
+      evidenceB: "",
+      winner: "",
+    },
+    update: {},
+  });
+}
+
+async function persist(state: DisputeState): Promise<void> {
+  await prisma.disputeState.update({
+    where: { id: SINGLETON_ID },
+    data: {
+      disputeCreated: state.disputeCreated,
+      partyBJoined: state.partyBJoined,
+      evidenceA: state.evidenceA,
+      evidenceB: state.evidenceB,
+      aiResult:
+        state.aiResult === null
+          ? Prisma.JsonNull
+          : (JSON.parse(JSON.stringify(state.aiResult)) as Prisma.InputJsonValue),
+      winner: state.winner,
+    },
+  });
+}
+
+export async function getDisputeState(): Promise<DisputeState> {
+  const row = await ensureRow();
+  return clone(rowToState(row));
 }
 
 export type StoreResult =
   | { ok: true; state: DisputeState }
   | { ok: false; error: string };
 
-function finalized(): boolean {
-  return Boolean(store.aiResult?.finalized);
-}
+export async function createDispute(): Promise<StoreResult> {
+  const row = await ensureRow();
+  let store = rowToState(row);
 
-export function createDispute(): StoreResult {
-  if (store.disputeCreated && !finalized()) {
+  if (store.disputeCreated && !isDisputeFinalized(store)) {
     return { ok: false, error: "A dispute is already open." };
   }
-  if (finalized()) {
+  if (isDisputeFinalized(store)) {
     store = initial();
   }
   store.disputeCreated = true;
-  return { ok: true, state: clone() };
+  await persist(store);
+  return { ok: true, state: clone(store) };
 }
 
-export function joinDispute(): StoreResult {
+export async function joinDispute(): Promise<StoreResult> {
+  const row = await ensureRow();
+  const store = rowToState(row);
+
   if (!store.disputeCreated) {
     return { ok: false, error: "No dispute to join yet." };
   }
   if (store.partyBJoined) {
     return { ok: false, error: "Already joined." };
   }
-  if (finalized()) {
+  if (isDisputeFinalized(store)) {
     return { ok: false, error: "Dispute is closed." };
   }
   store.partyBJoined = true;
-  return { ok: true, state: clone() };
+  await persist(store);
+  return { ok: true, state: clone(store) };
 }
 
-export function submitEvidenceA(text: string): StoreResult {
+export async function submitEvidenceA(text: string): Promise<StoreResult> {
+  const row = await ensureRow();
+  const store = rowToState(row);
   const t = text.trim();
-  if (!store.disputeCreated || finalized()) {
+
+  if (!store.disputeCreated || isDisputeFinalized(store)) {
     return { ok: false, error: "Cannot submit evidence now." };
   }
   if (!t) {
     return { ok: false, error: "Evidence cannot be empty." };
   }
   store.evidenceA = t;
-  return { ok: true, state: clone() };
+  await persist(store);
+  return { ok: true, state: clone(store) };
 }
 
-export function submitEvidenceB(text: string): StoreResult {
+export async function submitEvidenceB(text: string): Promise<StoreResult> {
+  const row = await ensureRow();
+  const store = rowToState(row);
   const t = text.trim();
-  if (!store.disputeCreated || !store.partyBJoined || finalized()) {
+
+  if (!store.disputeCreated || !store.partyBJoined || isDisputeFinalized(store)) {
     return { ok: false, error: "Cannot submit evidence now." };
   }
   if (!t) {
     return { ok: false, error: "Evidence cannot be empty." };
   }
   store.evidenceB = t;
-  return { ok: true, state: clone() };
+  await persist(store);
+  return { ok: true, state: clone(store) };
 }
 
-/**
- * Persists an AI verdict produced by the caller (e.g. /api/run-ai after analysis).
- * Does not run analysis itself — keeps inference isolated to the API layer.
- */
-export function applyAiVerdictToStore(
+export async function applyAiVerdictToStore(
   analyze: (evidenceA: string, evidenceB: string) => DisputeVerdict
-): StoreResult {
-  if (!store.disputeCreated || finalized()) {
+): Promise<StoreResult> {
+  const row = await ensureRow();
+  const store = rowToState(row);
+
+  if (!store.disputeCreated || isDisputeFinalized(store)) {
     return { ok: false, error: "Cannot run AI now." };
   }
   if (!store.evidenceA || !store.evidenceB) {
@@ -108,13 +175,17 @@ export function applyAiVerdictToStore(
   const verdict = analyze(store.evidenceA, store.evidenceB);
   store.aiResult = { ...verdict };
   store.winner = verdict.winner;
-  return { ok: true, state: clone() };
+  await persist(store);
+  return { ok: true, state: clone(store) };
 }
 
-export function finalizeDispute(opts?: {
+export async function finalizeDispute(opts?: {
   chainSignature?: string;
   fundsSimulationText?: string;
-}): StoreResult {
+}): Promise<StoreResult> {
+  const row = await ensureRow();
+  const store = rowToState(row);
+
   if (!store.aiResult) {
     return { ok: false, error: "Generate an AI verdict first." };
   }
@@ -131,5 +202,6 @@ export function finalizeDispute(opts?: {
     fundsSimulationText,
     chainSignature: sig && sig.length > 0 ? sig : null,
   };
-  return { ok: true, state: clone() };
+  await persist(store);
+  return { ok: true, state: clone(store) };
 }
