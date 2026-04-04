@@ -30,6 +30,9 @@ import { useEffect, useMemo, useState } from "react";
 
 const DEVNET_RPC = clusterApiUrl("devnet");
 
+const ADMIN_FOCUS =
+  "This page: review both filings · run AI · finalize settlement";
+
 export default function AdminPage() {
   const connection = useMemo(
     () => new Connection(DEVNET_RPC, "confirmed"),
@@ -144,7 +147,7 @@ export default function AdminPage() {
 
   if (loading || !state) {
     return (
-      <ArbiFiShell title="Admin" active="admin">
+      <ArbiFiShell title={ADMIN_FOCUS} active="admin">
         <p className="text-sm text-zinc-500">Loading dispute state…</p>
       </ArbiFiShell>
     );
@@ -162,7 +165,7 @@ export default function AdminPage() {
   const canFinalize = Boolean(verdict) && !fin && !finalizeBusy;
 
   return (
-    <ArbiFiShell title="Admin" active="admin">
+    <ArbiFiShell title={ADMIN_FOCUS} active="admin">
       <ProgressBlock state={state} />
 
       <section className={card}>

@@ -9,9 +9,11 @@ export default function HomePage() {
   return (
     <ArbiFiShell title="Dispute portal" active="home">
       <p className="text-sm leading-relaxed text-zinc-500">
-        ArbiFi uses a shared in-memory API for this hackathon demo. Open each
-        role in a separate tab or device to simulate Party A, Party B, and the
-        administrator. State resets when the server restarts.
+        This desk behaves like three different users on one live case: Party A,
+        Party B, and a neutral administrator. Use the workspace switcher above,
+        the role buttons below, or open each route in its own browser window so
+        sessions feel independent. State is shared through the API and resets
+        when the server restarts.
       </p>
 
       <section className={card}>

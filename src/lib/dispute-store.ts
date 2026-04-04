@@ -111,18 +111,24 @@ export function applyAiVerdictToStore(
   return { ok: true, state: clone() };
 }
 
-export function finalizeDispute(chainSignature?: string): StoreResult {
+export function finalizeDispute(opts?: {
+  chainSignature?: string;
+  fundsSimulationText?: string;
+}): StoreResult {
   if (!store.aiResult) {
     return { ok: false, error: "Generate an AI verdict first." };
   }
   if (store.aiResult.finalized) {
     return { ok: false, error: "Already finalized." };
   }
-  const sig = chainSignature?.trim();
+  const sig = opts?.chainSignature?.trim();
+  const fundsSimulationText =
+    opts?.fundsSimulationText?.trim() ||
+    `Funds sent to ${store.winner} (simulated escrow release — hackathon demo).`;
   store.aiResult = {
     ...store.aiResult,
     finalized: true,
-    fundsSimulationText: `Funds sent to ${store.winner} (simulated escrow release — hackathon demo).`,
+    fundsSimulationText,
     chainSignature: sig && sig.length > 0 ? sig : null,
   };
   return { ok: true, state: clone() };

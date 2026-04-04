@@ -14,6 +14,8 @@ import {
 import { useDispute } from "@/context/DisputeContext";
 import { useState } from "react";
 
+const PARTY_A_FOCUS = "This page: open the case · submit Evidence A";
+
 export default function PartyAPage() {
   const { state, loading, error, createDispute, submitEvidenceA } =
     useDispute();
@@ -45,7 +47,7 @@ export default function PartyAPage() {
 
   if (loading || !state) {
     return (
-      <ArbiFiShell title="Party A" active="partyA">
+      <ArbiFiShell title={PARTY_A_FOCUS} active="partyA">
         <p className="text-sm text-zinc-500">Loading dispute state…</p>
       </ArbiFiShell>
     );
@@ -57,7 +59,7 @@ export default function PartyAPage() {
     state.disputeCreated && !fin && inputA.trim().length > 0;
 
   return (
-    <ArbiFiShell title="Party A" active="partyA">
+    <ArbiFiShell title={PARTY_A_FOCUS} active="partyA">
       <ProgressBlock state={state} />
 
       <section className={card}>
